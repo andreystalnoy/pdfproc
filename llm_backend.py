@@ -47,8 +47,12 @@ def _image_to_b64(image) -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def vision_query(image, prompt: str, model: str, system: str = "") -> str:
-    """Send image + prompt to the configured backend. Returns text."""
+def vision_query(image, prompt: str, model: str, system: str = "", think: bool = False) -> str:
+    """Send image + prompt to the configured backend. Returns text.
+
+    think: for Ollama thinking models (qwen3.5 etc.) — reasoning is off by default,
+    because page transcription gains nothing from it but costs time and context.
+    """
     provider, model_id = _parse_model(model)
 
     if provider == "anthropic":
@@ -117,11 +121,17 @@ def vision_query(image, prompt: str, model: str, system: str = "") -> str:
                 "ollama package not installed. Run: pip install ollama"
             )
         b64 = _image_to_b64(image)
-        response = ollama.chat(
+        kwargs = dict(
             model=model_id,
             messages=[{"role": "user", "content": prompt, "images": [b64]}],
             options={"num_ctx": 8192},
         )
+        try:
+            response = ollama.chat(**kwargs, think=think)
+        except ollama.ResponseError as e:
+            if "think" not in str(e).lower():
+                raise
+            response = ollama.chat(**kwargs)
         return _strip_thinking(response["message"]["content"])
 
 

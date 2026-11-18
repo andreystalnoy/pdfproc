@@ -150,9 +150,12 @@ def pages_to_images(pdf_path: str, page_indices: list[int], dpi: int = 200) -> d
     return result
 
 
+VISION_THINK = False  # включается флагом --think
+
+
 def ollama_vision(image, prompt: str, model: str) -> str:
     """Delegate to llm_backend.vision_query (supports ollama, anthropic, openai)."""
-    return vision_query(image, prompt, model=model)
+    return vision_query(image, prompt, model=model, think=VISION_THINK)
 
 
 import base64  # нужен выше
@@ -784,7 +787,12 @@ def main():
     p.add_argument("--question", "-q", default="", help="Вопрос для задачи qa")
     p.add_argument("--ocr", action="store_true", help="Принудительный OCR")
     p.add_argument("--force", action="store_true", help="Игнорировать кэш и пересчитать всё заново")
+    p.add_argument("--think", action="store_true",
+                   help="Включить режим размышлений при чтении страниц (по умолчанию выключен)")
     args = p.parse_args()
+
+    global VISION_THINK
+    VISION_THINK = args.think
 
     # Автовыбор модели
     if args.model == "auto":
