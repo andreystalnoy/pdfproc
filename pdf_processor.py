@@ -272,8 +272,11 @@ def task_manifest(pdf_path: str, page_indices: list[int], out_path: str, model: 
         cached = json.loads(manifest_cache.read_text(encoding="utf-8"))
         if cached.get("model") == model:
             manifest = cached["manifest"]
-            Path(out).write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-            print(f"[cache] Манифест загружен из кэша ({len(manifest)} стр.) → {out}")
+            out_path = Path(out)
+            if out_path.is_dir():
+                out_path = out_path / "manifest.json"
+            out_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"[cache] Манифест загружен из кэша ({len(manifest)} стр.) → {out_path}")
             # Статистика
             from collections import Counter
             types = Counter(e["type"] for e in manifest)
@@ -308,11 +311,14 @@ def task_manifest(pdf_path: str, page_indices: list[int], out_path: str, model: 
         except Exception as e:
             manifest.append({"page": page_i + 1, "type": "other", "lang": "both", "summary": f"ошибка: {e}"})
             print(f"ошибка: {e}")
+        # Пишем кэш после каждой страницы — чтобы не потерять при сбое
+        manifest_cache.write_text(json.dumps({"model": model, "manifest": manifest}, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    Path(out).write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    # Сохранить кэш
-    manifest_cache.write_text(json.dumps({"model": model, "manifest": manifest}, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\nМанифест ({len(manifest)} стр.) → {out}")
+    out_path = Path(out)
+    if out_path.is_dir():
+        out_path = out_path / "manifest.json"
+    out_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\nМанифест ({len(manifest)} стр.) → {out_path}")
 
     # Краткая статистика
     from collections import Counter

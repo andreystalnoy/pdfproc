@@ -9,7 +9,14 @@ Backend is selected by the MODEL string prefix:
 """
 
 import io
+import re
 import base64
+
+
+def _strip_thinking(text: str) -> str:
+    """Remove <think>...</think> blocks that thinking models emit before the answer."""
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    return text.strip()
 
 MODEL_REGISTRY = {
     "qwen2.5vl:7b":   {"provider": "ollama", "vision": True,  "vram_gb": 8,  "quality": 2},
@@ -115,7 +122,7 @@ def vision_query(image, prompt: str, model: str, system: str = "") -> str:
             messages=[{"role": "user", "content": prompt, "images": [b64]}],
             options={"num_ctx": 8192},
         )
-        return response["message"]["content"]
+        return _strip_thinking(response["message"]["content"])
 
 
 def text_query(prompt: str, model: str, system: str = "") -> str:
@@ -168,4 +175,4 @@ def text_query(prompt: str, model: str, system: str = "") -> str:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         response = ollama.chat(model=model_id, messages=messages)
-        return response["message"]["content"]
+        return _strip_thinking(response["message"]["content"])
